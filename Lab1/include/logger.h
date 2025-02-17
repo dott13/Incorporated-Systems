@@ -4,9 +4,8 @@
 #include <Arduino.h>
 
 void logger_init();
-void log_info(const String &message);
-void log_success(const String &message);
-void log_error(const String &message);
-
+void log_info(const char *message);
+void log_success(const char *message);
+void log_error(const char *message);
 
 #endif
