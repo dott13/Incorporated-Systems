@@ -1,72 +1,128 @@
 #include <Arduino.h>
 #include <stdio.h>
 #include <string.h>
-#include "led.h"
-#include "logger.h"
+#include "led.h"    // LED functions (led_init, led_on, led_off)
+#include "logger.h" // Logger functions (log_info, log_success, log_error)
+#include <LiquidCrystal_I2C.h>
+#include <Keypad.h>
 
-// Custom putc function: writes a character to Serial.
-static int serial_putchar(char c, FILE *stream) {
-  if (c == '\n') {  // Insert carriage return before newline for proper terminal formatting.
+// ===== LCD SETUP =====
+// Create an I2C LCD object. Adjust the I2C address (0x27) as needed.
+LiquidCrystal_I2C lcd(0x27, 16, 2);
+
+// ===== KEYPAD SETUP =====
+const byte ROWS = 4;
+const byte COLS = 4;
+char keys[ROWS][COLS] = {
+    {'1', '2', '3', 'A'},
+    {'4', '5', '6', 'B'},
+    {'7', '8', '9', 'C'},
+    {'*', '0', '#', 'D'}};
+byte rowPins[ROWS] = {A0, A1, A2, A3}; // Change if needed
+byte colPins[COLS] = {A4, A5, A6, A7}; // Change if needed
+Keypad keypad = Keypad(makeKeymap(keys), rowPins, colPins, ROWS, COLS);
+
+// ===== STDIO STREAMS =====
+
+// (1) Combined output: write every character to both Serial and the LCD.
+static int combined_putchar(char c, FILE *stream)
+{
+  if (c == '\n')
+  {
     Serial.write('\r');
+    // For LCD, we simply write the newline character.
   }
   Serial.write(c);
+  lcd.write(c);
   return 0;
 }
 
-// Custom getc function: reads a character from Serial.
-static int serial_getchar(FILE *stream) {
-  // Wait until a character is available.
-  while (!Serial.available()) {
-    ; // Busy-wait; consider a timeout if needed.
+// (2) Keypad input: read a character from the keypad.
+static int keypad_getchar(FILE *stream)
+{
+  char key = NO_KEY;
+  // Wait for a key press
+  while (key == NO_KEY)
+  {
+    key = keypad.getKey();
   }
-  return Serial.read();
+  // For simplicity, we return the pressed key’s ASCII code.
+  return key;
 }
 
-// Declare a static FILE object.
-static FILE serial_stream;
+// Create FILE objects.
+static FILE combined_stream; // for stdout
+static FILE keypad_stream;   // for stdin
 
-void setup() {
+// The valid 4-digit code
+const char *validCode = "1234";
+
+void setup()
+{
+  // Initialize Serial.
   Serial.begin(9600);
-  while (!Serial) {
+  while (!Serial)
+  {
     ; // Wait for Serial to initialize.
   }
-  
-  // Manually initialize the FILE structure.
-  // The member names (flags, put, get) are defined in avr-libc.
-  serial_stream.flags  = _FDEV_SETUP_WRITE | _FDEV_SETUP_READ;
-  serial_stream.put    = serial_putchar;
-  serial_stream.get    = serial_getchar;
-  
-  // Redirect standard I/O to our custom serial stream.
-  stdout = &serial_stream;
-  stdin  = &serial_stream;
-  
+
+  // Initialize LCD.
+  lcd.init();
+  lcd.backlight();
+  lcd.clear();
+
   // Initialize LED and logger.
   led_init();
   logger_init();
-  
-  log_info("System init. Write Commands...");
-  log_info("Type 'on' to turn on the LED, 'off' to turn it off");
+
+  // Set up the combined output stream for stdout.
+  combined_stream.flags = _FDEV_SETUP_WRITE;
+  combined_stream.put = combined_putchar;
+  stdout = &combined_stream; // All printf output goes here.
+
+  // Set up the keypad input stream for stdin.
+  keypad_stream.flags = _FDEV_SETUP_READ;
+  keypad_stream.get = keypad_getchar;
+  stdin = &keypad_stream; // All scanf input comes from the keypad.
+
+  // Print startup message (will appear on both Serial and LCD).
+  printf("System init.\nEnter 4-digit code:\n");
 }
 
-void loop() {
-  char command[32];
-  
-  // Prompt the user.
-  printf("Enter command: ");
-  
-  // Read a command using scanf.
-  if (scanf("%31s", command) > 0) {
-    // Process the command.
-    if (strcmp(command, "on") == 0) {
-      led_on();
-      log_success("LED turned ON");
-    } else if (strcmp(command, "off") == 0) {
-      led_off();
-      log_success("LED turned OFF");
-    } else {
-      log_error("Unknown command received");
-      printf("Valid commands are: 'on' or 'off'\n");
+void loop()
+{
+  char codeBuffer[5] = {0}; // Buffer for 4 digits + null terminator
+
+  // Use scanf to read a 4-character code from the keypad.
+  // Note: This will wait until 4 non-whitespace characters are received.
+  if (scanf("%4s", codeBuffer) > 0)
+  {
+    printf("\nCode entered: %s\n", codeBuffer);
+
+    if (strcmp(codeBuffer, validCode) == 0)
+    {
+      printf("Access Granted\n");
+      log_success("Access Granted");
+      led_on(); // Keep LED on if correct.
+      lcd.clear();
+      lcd.print("Access Granted");
     }
+    else
+    {
+      printf("Access Denied\n");
+      log_error("Access Denied");
+      lcd.clear();
+      lcd.print("Access Denied");
+      led_on();
+      delay(1000);
+      led_off();
+    }
+
+    delay(3000);
+
+    // Prompt for next code.
+    printf("\nEnter 4-digit code:\n");
+    lcd.clear();
+    lcd.print("Enter Code:");
   }
 }
