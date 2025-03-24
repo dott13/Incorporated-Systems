@@ -1,43 +1,53 @@
 {
   "version": 1,
-  "author": "Tudor Popov",
+  "author": "Anonymous maker",
   "editor": "wokwi",
   "parts": [
     {
       "type": "wokwi-arduino-mega",
       "id": "mega",
-      "top": 48.6,
-      "left": -42,
+      "top": -66.6,
+      "left": 82.8,
       "attrs": {}
     },
     {
-      "type": "wokwi-lcd1602",
-      "id": "lcd1",
-      "top": -108.8,
-      "left": 92,
-      "attrs": { "pins": "i2c" }
+      "type": "wokwi-pushbutton",
+      "id": "btn1",
+      "top": -205,
+      "left": 230.4,
+      "attrs": { "color": "green", "xray": "1" }
     },
     {
-      "type": "wokwi-membrane-keypad",
-      "id": "keypad1",
-      "top": -318.8,
-      "left": -109.6,
-      "attrs": {}
+      "type": "wokwi-pushbutton",
+      "id": "btn2",
+      "top": -157,
+      "left": 230.4,
+      "attrs": { "color": "green", "xray": "1" }
+    },
+    {
+      "type": "wokwi-pushbutton",
+      "id": "btn3",
+      "top": -118.6,
+      "left": 230.4,
+      "attrs": { "color": "green", "xray": "1" }
+    },
+    {
+      "type": "wokwi-led",
+      "id": "led1",
+      "top": -166.8,
+      "left": 426.2,
+      "attrs": { "color": "red" }
     }
   ],
   "connections": [
-    ["lcd1:GND", "mega:GND.1", "black", ["h0"]],
-    ["lcd1:VCC", "mega:5V", "red", ["h0"]],
-    ["lcd1:SDA", "mega:20", "green", ["h0"]],
-    ["lcd1:SCL", "mega:21", "green", ["h0"]],
-    ["keypad1:R1", "mega:A0", "green", ["v0"]],
-    ["keypad1:R2", "mega:A1", "green", ["v0"]],
-    ["keypad1:R3", "mega:A2", "green", ["v0"]],
-    ["keypad1:R4", "mega:A3", "green", ["v0"]],
-    ["keypad1:C1", "mega:A4", "green", ["v0"]],
-    ["keypad1:C2", "mega:A5", "green", ["v0"]],
-    ["keypad1:C3", "mega:A6", "green", ["v0"]],
-    ["keypad1:C4", "mega:A7", "green", ["v0"]]
+    ["btn1:1.l", "mega:GND.1", "black", ["h0"]],
+    ["btn2:1.l", "mega:GND.1", "black", ["h-28.8", "v-9.6", "h230.4"]],
+    ["btn1:2.r", "mega:2", "green", ["h0"]],
+    ["btn2:2.r", "mega:3", "green", ["h0"]],
+    ["btn3:1.l", "mega:GND.1", "black", ["h0"]],
+    ["btn3:2.r", "mega:4", "green", ["h0"]],
+    ["led1:A", "mega:12", "green", ["v0"]],
+    ["led1:C", "mega:GND.1", "black", ["v0"]]
   ],
   "dependencies": {}
 }
