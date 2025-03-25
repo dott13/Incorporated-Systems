@@ -1,15 +1,15 @@
 #include "freertos_tasks.h"
 #include <stdio.h>
 
-// Create global semaphore, queue, and mutex.
+// Global synchronization objects
 SemaphoreHandle_t xButtonSemaphore = NULL;
 QueueHandle_t xDataQueue = NULL;
 SemaphoreHandle_t xMutex = NULL;
 
-volatile int extraCounter = 0; // Shared counter for Task Extra
+// Shared counter for Task Extra
+volatile int extraCounter = 0;
 
-//--------------------------------------------------
-// Task 1: Button LED Task
+// Task 1 – Button LED Task
 void vTaskButtonLED(void *pvParameters)
 {
     TickType_t xLastWakeTime = xTaskGetTickCount();
@@ -27,6 +27,7 @@ void vTaskButtonLED(void *pvParameters)
             ledOnTime = xTaskGetTickCount();
             xSemaphoreGive(xButtonSemaphore);
         }
+
         if (ledOnActive)
         {
             if ((xTaskGetTickCount() - ledOnTime) >= pdMS_TO_TICKS(1000))
@@ -35,23 +36,25 @@ void vTaskButtonLED(void *pvParameters)
                 ledOnActive = false;
             }
         }
+
         buttonPrevState = currentState;
         vTaskDelayUntil(&xLastWakeTime, pdMS_TO_TICKS(10));
     }
 }
 
-//--------------------------------------------------
-// Task 2: Synchronization Task
+// Task 2 – Synchronization Task
 void vTaskSync(void *pvParameters)
 {
     static uint8_t N = 0;
     uint8_t value;
+
     for (;;)
     {
         if (xSemaphoreTake(xButtonSemaphore, portMAX_DELAY) == pdPASS)
         {
             N++;
             printf("Task2: Received semaphore. New N = %d\n", N);
+
             for (uint8_t i = 1; i <= N; i++)
             {
                 value = i;
@@ -61,6 +64,7 @@ void vTaskSync(void *pvParameters)
                 }
                 vTaskDelay(pdMS_TO_TICKS(50));
             }
+
             for (uint8_t j = 0; j < N; j++)
             {
                 digitalWrite(LED2_PIN, HIGH);
@@ -72,12 +76,12 @@ void vTaskSync(void *pvParameters)
     }
 }
 
-//--------------------------------------------------
-// Task 3: Asynchronous Task
+// Task 3 – Asynchronous Task
 void vTaskAsync(void *pvParameters)
 {
     uint8_t receivedValue;
     char buffer[64];
+
     for (;;)
     {
         buffer[0] = '\0';
@@ -87,16 +91,17 @@ void vTaskAsync(void *pvParameters)
             sprintf(temp, "%d ", receivedValue);
             strcat(buffer, temp);
         }
+
         if (strlen(buffer) > 0)
         {
             printf("Task3: Received from queue: %s\n", buffer);
         }
+
         vTaskDelay(pdMS_TO_TICKS(200));
     }
 }
 
-//--------------------------------------------------
-// Task Extra: Additional Functionality using Mutex.
+// Task Extra – Additional Functionality using Mutex
 void vTaskExtra(void *pvParameters)
 {
     for (;;)

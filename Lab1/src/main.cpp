@@ -1,15 +1,8 @@
 #include <Arduino.h>
 #include <stdio.h>
-#include "led.h"
-#include "logger.h"
-#include "lab2tasks.h"
+#include "freertos_tasks.h"
 
-#define BUTTON_LED_PIN 2 // Task 1: Button to toggle LED (with internal pull-up)
-#define BUTTON_INC_PIN 3 // Task 3: Button to increment variable
-#define BUTTON_DEC_PIN 4 // Task 3: Button to decrement variable
-#define LED_BLINK_PIN 12 // Task 2: LED for blinking
-
-// STDIO redirection functions for Serial.
+// STDIO redirection functions
 static int serial_putchar(char c, FILE *stream)
 {
   if (c == '\n')
@@ -24,48 +17,93 @@ static int serial_getchar(FILE *stream)
 {
   while (!Serial.available())
   {
-    ;
+    vTaskDelay(1); // Use FreeRTOS delay instead of busy waiting
   }
   return Serial.read();
 }
 
-// Declare a FILE object for STDIO redirection.
 static FILE serial_stream;
 
 void setup()
 {
-  Serial.begin(9600);
-  while (!Serial)
+  // Initialize Serial with multiple attempts
+  for (int i = 0; i < 5; i++)
   {
-    ;
+    Serial.begin(115200);
+    delay(500);
+    if (Serial)
+      break;
   }
 
-  // Set up STDIO redirection.
+  // Wait for Serial to be ready with timeout
+  unsigned long startTime = millis();
+  while (!Serial && (millis() - startTime < 10000))
+  {
+    // Wait for Serial to be ready
+  }
+
+  if (!Serial)
+  {
+    // Fallback error signaling
+    pinMode(LED_BUILTIN, OUTPUT);
+    while (1)
+    {
+      digitalWrite(LED_BUILTIN, HIGH);
+      delay(500);
+      digitalWrite(LED_BUILTIN, LOW);
+      delay(500);
+    }
+  }
+
+  // Redirect STDIO
   serial_stream.flags = _FDEV_SETUP_WRITE | _FDEV_SETUP_READ;
   serial_stream.put = serial_putchar;
   serial_stream.get = serial_getchar;
   stdout = &serial_stream;
   stdin = &serial_stream;
 
-  // Initialize logger and LED.
-  logger_init();
-  led_init();
+  printf("System initializing with FreeRTOS on ATMega2560...\n");
 
-  // Configure pins for the tasks.
-  pinMode(BUTTON_LED_PIN, INPUT_PULLUP); // Task 1 button (active LOW)
-  pinMode(BUTTON_INC_PIN, INPUT_PULLUP); // Task 3 increment button
-  pinMode(BUTTON_DEC_PIN, INPUT_PULLUP); // Task 3 decrement button
-  pinMode(LED_BLINK_PIN, OUTPUT);        // Task 2 blinking LED
+  // Configure hardware pins
+  pinMode(PIN_BUTTON, INPUT_PULLUP);
+  pinMode(LED1_PIN, OUTPUT);
+  pinMode(LED2_PIN, OUTPUT);
 
-  printf("System initialized. Running sequential tasks...\n");
+  // Create FreeRTOS synchronization objects
+  xButtonSemaphore = xSemaphoreCreateBinary();
+  if (xButtonSemaphore == NULL)
+  {
+    printf("Failed to create button semaphore!\n");
+  }
+
+  xDataQueue = xQueueCreate(20, sizeof(uint8_t));
+  if (xDataQueue == NULL)
+  {
+    printf("Failed to create data queue!\n");
+  }
+
+  xMutex = xSemaphoreCreateMutex();
+  if (xMutex == NULL)
+  {
+    printf("Failed to create mutex!\n");
+  }
+
+  // Create FreeRTOS tasks
+  xTaskCreate(vTaskButtonLED, "ButtonLED", 256, NULL, 2, NULL);
+  xTaskCreate(vTaskSync, "Sync", 256, NULL, 2, NULL);
+  xTaskCreate(vTaskAsync, "Async", 256, NULL, 1, NULL);
+  xTaskCreate(vTaskExtra, "Extra", 256, NULL, 1, NULL);
+
+  printf("FreeRTOS tasks created.\n");
+
+  // Start the scheduler
+  vTaskStartScheduler();
+
+  // Should never reach here
+  printf("Scheduler failed to start!\n");
 }
 
 void loop()
 {
-  taskButtonLED();          // Task 1: Toggle LED on button press.
-  taskBlinkLED();           // Task 2: Blink LED if Task 1 LED is off.
-  taskVariableAdjustment(); // Task 3: Adjust state variable via buttons.
-  taskIdle();               // Idle Task: Report system state.
-
-  delay(50); // Delay to control task recurrence and reduce CPU load.
+  // loop() should never be reached
 }
