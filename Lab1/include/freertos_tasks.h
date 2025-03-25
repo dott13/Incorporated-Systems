@@ -10,7 +10,7 @@
 // Pin Definitions
 #define PIN_BUTTON 2         // Button input pin
 #define LED1_PIN LED_BUILTIN // Built-in LED
-#define LED2_PIN 12          // External LED
+#define LED2_PIN 13          // External LED
 
 // Task Function Prototypes
 void vTaskButtonLED(void *pvParameters);

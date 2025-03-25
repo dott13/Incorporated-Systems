@@ -28,8 +28,8 @@
   "connections": [
     ["btn1:1.l", "mega:GND.1", "black", ["h0"]],
     ["btn1:2.r", "mega:2", "green", ["h0"]],
-    ["led1:A", "mega:12", "green", ["v0"]],
-    ["led1:C", "mega:GND.1", "black", ["v0"]]
+    ["led1:C", "mega:GND.1", "black", ["v19.2", "h-47.6", "v19.2"]],
+    ["led1:A", "mega:13", "green", ["v28.8", "h-47.4"]]
   ],
   "dependencies": {}
 }
